@@ -1,0 +1,151 @@
+---
+title: "Strawberry HW"
+author: "帖达玉"
+date: '2024-10-02'
+output: html_document
+---
+
+```{r}
+library(knitr)  
+library(kableExtra)
+library(tidyverse)
+library(stringr)
+
+options(echo = FALSE, digits = 3, 
+        scipen = 999, warn = FALSE, message = FALSE)
+```
+
+```{r}
+strawberry <- read_csv("strawberries25_v3.csv", col_names = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(stringr)
+
+strawberry <- strawberry %>%
+  mutate(Category = case_when(
+    Domain == "Total" ~ NA_character_,  
+    str_detect(Domain, "CHEMICAL") ~ str_trim(str_remove(Domain, "CHEMICAL, ")), 
+    TRUE ~ Domain
+  ))
+
+unique(strawberry$Category)
+
+
+```
+
+```{r}
+
+strawberry <- strawberry %>%
+  mutate(
+    Name = case_when(
+      Category == "TOTAL" ~ NA_character_, 
+      str_detect(`Domain Category`, fixed(Category)) & str_detect(`Domain Category`, "\\(.*=.*\\)") ~ 
+        str_extract(`Domain Category`, "(?<=\\().*?(?=\\s?=)"), 
+      str_detect(`Domain Category`, fixed(Category)) & str_detect(`Domain Category`, "\\(.*\\)") ~ 
+        str_extract(`Domain Category`, "(?<=\\().*?(?=\\))"),  
+      TRUE ~ NA_character_  
+    ),
+    Number = case_when(
+      Category == "TOTAL" ~ NA_real_,  
+      str_detect(`Domain Category`, fixed(Category)) & str_detect(`Domain Category`, "\\(.*=.*\\)") ~ 
+        as.numeric(str_extract(`Domain Category`, "(?<=\\=\\s?).*?(?=\\))")), 
+      str_detect(`Domain Category`, fixed(Category)) & str_detect(`Domain Category`, "\\(.*\\)") ~ 
+        NA_real_,  
+      TRUE ~ NA_real_  
+    )
+  )
+
+head(strawberry)
+
+
+
+```
+
+```{r}
+strawberry <- strawberry %>%
+  mutate(Category = case_when(
+    `Domain Category` == "NOT SPECIFIED" ~ NA_character_,
+    TRUE ~ Category  
+  ))
+
+head(strawberry)
+
+```
+
+
+```{r}
+strawberry <- strawberry %>%
+  mutate(information = gsub("STRAWBERRIES\\s*", "", `Data Item`)) 
+
+head(strawberry)
+
+```
+
+```{r}
+strawberry_chemical <- strawberry %>%
+  filter(grepl("CHEMICAL|FERTILIZER", `Domain Category`))
+
+head(strawberry_chemical)
+
+```
+
+```{r}
+strawberry_AREA <- strawberry %>%
+  filter(grepl("AREA GROW|ORGANIC STATUS", `Domain Category`))
+head(strawberry_AREA)
+```
+
+```{r}
+strawberry_AREA <- strawberry_AREA %>%
+  mutate(
+    Min = case_when(
+      str_detect(Name, "100 OR MORE ACRES") ~ 100,  
+      str_detect(Name, "TO") ~ as.numeric(str_extract(Name, "^[0-9.]+")), 
+      TRUE ~ NA_real_
+    ),
+    Max = case_when(
+      str_detect(Name, "100 OR MORE ACRES") ~ "MORE",  
+      str_detect(Name, "TO") ~ str_extract(Name, "(?<=TO )[0-9.]+"),  
+      TRUE ~ NA_character_
+    )
+  )
+
+head(strawberry_AREA)
+
+```
+
+
+```{r}
+strawberry_cleaned=combine(strawberry_AREA,strawberry_chemical)
+write.csv(strawberry_cleaned, file = "strawberry_cleaned.csv", row.names = FALSE)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
